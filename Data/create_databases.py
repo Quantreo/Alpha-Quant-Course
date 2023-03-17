@@ -23,7 +23,7 @@ def get_rates(symbol, number_of_data=10_000, timeframe=mt5.TIMEFRAME_D1):
 
     return df_rates
 
-# !! You can't import no more than 99.999 rows in one request
+# !! You can't import more than 99.999 rows in one request
 df = get_rates("AUDUSD-Z", number_of_data=30_000, timeframe=mt5.TIMEFRAME_H4)
 
 # Display the data

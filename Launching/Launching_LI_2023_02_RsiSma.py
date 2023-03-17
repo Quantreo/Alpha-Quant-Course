@@ -24,7 +24,3 @@ RO.run_optimization()
 RO.display()
 params = RO.best_params_smoothed
 print(params)
-
-
-
-
