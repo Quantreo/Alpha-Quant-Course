@@ -25,5 +25,5 @@ To make the most of your learning experience, we provide a Discord forum where y
 
 
 🔥 More information there: https://www.quantreo.com <br>
-👥 Join the Public Discord community: https://discord.gg/qGX9JNku67
+👥 Join the Public Discord community: https://discord.gg/qGX9JNku67 <br>
 (the private forums are only available if you follow the Alpha Quant Programm)
