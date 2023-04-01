@@ -24,6 +24,6 @@ To make the most of your learning experience, we provide a Discord forum where y
 **And, if you're not completely satisfied with the course, we offer a 15-day satisfaction guarantee. Don't miss out on this opportunity to improve your knowledge of this fascinating subject - enroll today!**
 
 
-🔥 More information there: https://www.quantreo.com
+🔥 More information there: https://www.quantreo.com <br>
 👥 Join the Public Discord community: https://discord.gg/qGX9JNku67
 (the private forums are only available if you follow the Alpha Quant Programm)
