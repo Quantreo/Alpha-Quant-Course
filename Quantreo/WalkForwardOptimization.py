@@ -57,7 +57,16 @@ class WalkForwardOptimization:
 
             # If we are at the last sample we take the whole rest to not create a tiny last sample
             if (len(self.data) - end) < 2 * length_test:
-                end = len(self.data)
+                # Fill the samples list depending on if there are anchored or not
+                if self.anchored:
+                    # We store the train and test set in 2 list to make future computations easier
+                    self.train_samples.append(self.data.iloc[:end - length_test, :])
+                    self.test_samples.append(self.data.iloc[end - length_test: len(self.data), :])
+                else:
+                    # We store the train and test set in 2 list to make future computations easier
+                    self.train_samples.append(self.data.iloc[start:end - length_test, :])
+                    self.test_samples.append(self.data.iloc[end - length_test: len(self.data), :])
+                break
 
             # Fill the samples list depending on if there are anchored or not
             if self.anchored:
