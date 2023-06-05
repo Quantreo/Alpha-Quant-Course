@@ -225,8 +225,12 @@ def run(symbol, buy, sell, lot, pct_tp=0.02, pct_sl=0.01, comment="", magic=2340
     """ Close trade eventually """
     # Extraction type trade
     try:
-        position = orders.loc[orders["symbol"] == symbol].values[0][1]
-        identifier = orders.loc[orders["symbol"] == symbol].values[0][0]
+        position = orders.loc[orders["symbol"] == symbol]
+        identifier = orders.loc[orders["symbol"] == symbol]
+        
+        position = position_list.loc[position_list["magic"]==magic].values[0][1]
+        identifier = identifier_list.loc[identifier_list["magic"] == magic].values[0][1]
+        
     except:
         position = None
         identifier = None
