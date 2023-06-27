@@ -99,7 +99,7 @@ class WalkForwardOptimization:
         # by the best criterion on the test set to be as close as possible to the reality
         storage_values_params = []
 
-        for self.params_item in np.random.choice(self.dictionaries, int(len(self.dictionaries)*0.55)):
+        for self.params_item in np.random.choice(self.dictionaries, size=int(len(self.dictionaries)*0.55), replace=False):
             # Extract the variables parameters from the dictionary
             current_params = [self.params_item[key] for key in list(self.parameters_range.keys())]
 
