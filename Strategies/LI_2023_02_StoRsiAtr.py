@@ -30,6 +30,8 @@ class StoRsiAtr:
         self.var_buy_high, self.var_sell_high = None, None
         self.var_buy_low, self.var_sell_low = None, None
 
+        self.output_dictionary = parameters.copy()
+
     def get_features(self):
         self.data = sto_rsi(self.data, "close", self.sto_period)
 

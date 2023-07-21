@@ -27,6 +27,8 @@ class Ichimoku_1:
         self.var_buy_high, self.var_sell_high = None, None
         self.var_buy_low, self.var_sell_low = None, None
 
+        self.output_dictionary = parameters.copy()
+
     def get_features(self):
         self.data = ichimoku(self.data, self.ichi_window_1, self.ichi_window_2)
 

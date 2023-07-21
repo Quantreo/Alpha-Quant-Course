@@ -41,7 +41,7 @@ while True:
 
         # Create the signals
         buy, sell = li_2023_02_LogRegQuantile(symbol, timeframe[0], 30, 80, 14, 5,
-                                              "../models/saved/LI-02-2023-BinLogReg-Model-TrainTime-2015-01-29-to-2021-07-07.joblib")
+                                              "../models/saved/LI_2023_02_BinLogreg_AUDUSD_model.jolib")
 
         # Import current open positions
         res = resume()

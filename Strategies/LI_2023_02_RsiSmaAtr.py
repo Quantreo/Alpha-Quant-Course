@@ -31,6 +31,8 @@ class RsiSmaAtr:
         self.var_buy_high, self.var_sell_high = None, None
         self.var_buy_low, self.var_sell_low = None, None
 
+        self.output_dictionary = parameters.copy()
+
     def get_features(self):
         self.data = sma(self.data, "close", self.fast_sma)
         self.data = sma(self.data, "close", self.slow_sma)

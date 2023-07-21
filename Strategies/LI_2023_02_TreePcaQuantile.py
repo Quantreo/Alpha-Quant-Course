@@ -39,16 +39,19 @@ class TreePcaQuantile:
         self.model, self.sc, self.pca = None, None, None
         self.saved_model_path, self.saved_sc_path = None, None
 
+        # Get test parameters
+        self.output_dictionary = parameters.copy()
+        self.output_dictionary["train_mode"] = False
+
         if self.train_mode:
             self.data_train = data
             self.data = data
             self.train_model()
         else:
-            self.model_path = parameters["model_path"]
-            self.sc_path = parameters["sc_path"]
-            self.pca_path = parameters["pca_path"]
+            self.model = parameters["model"]
+            self.sc = parameters["sc"]
+            self.pca = parameters["pca"]
             self.data = data
-            self.get_model()
 
         self.start_date_backtest = self.data.index[0]
         self.get_predictions()
@@ -103,29 +106,14 @@ class TreePcaQuantile:
         ml_model = DecisionTreeClassifier(max_depth=6)
         ml_model.fit(X_train_pca, y_train)
 
-        # Extract the start and end of t
-        start_training_time = self.data_train.index[0].strftime("%Y-%m-%d")
-        end_training_time = self.data_train.index[-1].strftime("%Y-%m-%d")
-
-        # Create paths to save our model because we can't compute it using the test set to be more realistic
-        self.saved_model_path = f'../models/train/LI-02-2023-TreePcaQuantile-Model-TrainTime-{start_training_time}-to-{end_training_time}.joblib'
-        self.saved_sc_path = f'../models/train/LI-02-2023-TreePcaQuantile-Sc-TrainTime-{start_training_time}-to-{end_training_time}.joblib'
-        self.saved_pca_path = f'../models/train/LI-2023-01-TreePcaQuantile-PCA-TrainTime-{start_training_time}-to-{end_training_time}.joblib'
-
         # Save models as attributes
         self.model = ml_model
         self.sc = sc
         self.pca = pca
 
-        # Save models in a folder
-        dump(ml_model, self.saved_model_path)
-        dump(sc, self.saved_sc_path)
-        dump(pca, self.saved_pca_path)
-
-    def get_model(self):
-        self.model = load(self.model_path)
-        self.sc = load(self.sc_path)
-        self.pca = load(self.pca_path)
+        self.output_dictionary["model"] = ml_model
+        self.output_dictionary["sc"] = sc
+        self.output_dictionary["pca"] = pca
 
     def get_predictions(self):
         self.data = self.get_features(self.data)
@@ -137,7 +125,6 @@ class TreePcaQuantile:
         predict_array = self.model.predict(X_pca)
         self.data["ml_signal"] = 0
         self.data["ml_signal"] = predict_array
-
 
     def get_entry_signal(self, time):
         """

@@ -3,33 +3,75 @@ from Quantreo.Backtest import *
 
 
 class WalkForwardOptimization:
+    """
+    A class for performing Walk-Forward Optimization on a trading strategy.
 
+    This class is responsible for finding the optimal set of parameters for a
+    trading strategy by dividing a dataset into multiple training and test sets
+    and running the strategy on each one.
+
+    This method of optimization helps prevent curve fitting by ensuring that the
+    strategy performs well over many different time periods and under various market conditions.
+
+    Parameters
+    ----------
+    data: DataFrame
+        The input data to be used for the backtests.
+
+    TradingStrategy: object
+        The trading strategy to be optimized.
+
+    fixed_parameters: dict
+        The parameters of the strategy that should remain fixed throughout the optimization process.
+
+    parameters_range: dict
+        The range of values that the non-fixed parameters of the strategy should take on during the optimization process.
+
+    length_train_set: int, default 10_000
+        The size of the training set in number of data points.
+
+    pct_train_set: float, default .80
+        The proportion of the dataset to be used for training.
+
+    anchored: bool, default True
+        Whether the training set should be anchored, meaning it always begins at the start of the dataset.
+        If False, the training set will move forward in time with the test set.
+
+    title: str, default None
+        The title of the backtest's plot.
+
+    randomness: float, default 0.75
+        A factor to determine the size of the sample space for parameter combinations to be tested.
+
+    """
 
     def __init__(self, data, TradingStrategy, fixed_parameters, parameters_range, length_train_set=10_000,
-                 pct_train_set=.80, anchored=True, title=None):
-
+                 pct_train_set=.80, anchored=True, title=None, randomness=0.75):
+        # Set initial parameters
         self.data = data
         self.TradingStrategy = TradingStrategy
         self.parameters_range = parameters_range
         self.fixed_parameters = fixed_parameters
-
+        self.randomness = randomness
         self.dictionaries = None
         self.get_combinations()
 
+        # Necessary variables to create our sub-samples
         self.length_train_set, self.pct_train_set = length_train_set, pct_train_set
         self.train_samples, self.test_samples, self.anchored = [], [], anchored
 
+        # Necessary variables to compute and store our criteria
         self.BT, self.criterion = None, None
-
         self.best_params_sample_df, self.best_params_sample = None, None
-
         self.smooth_result = pd.DataFrame()
         self.best_params_smoothed = list()
 
+        # Create dataframe that will contain the optimal parameters  (ranging parameters + criterion)
         self.columns = list(self.parameters_range.keys())
         self.columns.append("criterion")
         self.df_results = pd.DataFrame(columns=self.columns)
 
+        # Set the title of our Backtest plot
         self.title_graph = title
 
     def get_combinations(self):
@@ -99,7 +141,7 @@ class WalkForwardOptimization:
         # by the best criterion on the test set to be as close as possible to the reality
         storage_values_params = []
 
-        for self.params_item in np.random.choice(self.dictionaries, size=int(len(self.dictionaries)*0.55), replace=False):
+        for self.params_item in np.random.choice(self.dictionaries, size=int(len(self.dictionaries)*self.randomness), replace=False):
             # Extract the variables parameters from the dictionary
             current_params = [self.params_item[key] for key in list(self.parameters_range.keys())]
 
@@ -142,55 +184,37 @@ class WalkForwardOptimization:
 
         # Create a dictionary with the best params SMOOTHED by exponential mean or by the mode
         test_params = dict(self.smooth_result.iloc[-1,:-1])
-        test_params.update(self.fixed_parameters)
 
-        # Run on train set to keep the best model in memory and not the last
-        # !! We take the best params sample to train the model NOT the smoothed params
-        self.get_criterion(self.train_sample, self.best_params_sample)
+        # New way to keep the ML algo weights in memory
+        # We initialize the strategy class to train the weights if it is necessary
+        Strategy = self.TradingStrategy(self.train_sample, self.best_params_sample)
 
-        return test_params
+        # Extract the output dictionary parameters
+        output_params = Strategy.output_dictionary
+
+        # Replace the ranging parameters by the smoothed parameters
+        for key in test_params.keys():
+            output_params[key] = test_params[key]
+
+        return output_params
 
     def test_best_params(self):
         # Extract smoothed best params
         smooth_best_params = self.get_smoother_result()
 
-        try:
-            # Incorporate right path to the ML algo weights
-            smooth_best_params["model_path"] = self.BT.TradingStrategy.saved_model_path
-        except:
-            pass
-
-        try:
-            # Incorporate right path to the ML algo weights
-            smooth_best_params["sc_path"] = self.BT.TradingStrategy.saved_sc_path
-        except:
-            pass
-
-        try:
-            # Incorporate right path to the ML algo weights
-            smooth_best_params["pca_path"] = self.BT.TradingStrategy.saved_pca_path
-        except:
-            pass
-
-        # Remove train mode
-        smooth_best_params["train_mode"] = False
-
         # Compute the criterion on the test set, using the smoothed best params
         self.get_criterion(self.test_sample, smooth_best_params)
 
-        # !! Not necessary, but we replace the criterion train value by the criterion test value to do not create
-        # a look-ahead bias
+        # We replace the criterion train value by the criterion test value to do not create
         self.df_results.at[self.df_results.index[-1], 'criterion'] = self.criterion
-
         self.best_params_smoothed.append(smooth_best_params)
-        print(self.best_params_smoothed)
 
     def run_optimization(self):
         # Create the sub-samples
         self.get_sub_samples()
 
         # Run the optimization
-        for self.train_sample, self.test_sample in zip(self.train_samples, self.test_samples):
+        for self.train_sample, self.test_sample in tqdm(zip(self.train_samples, self.test_samples)):
             self.get_best_params_train_set()
             self.test_best_params()
 
@@ -199,14 +223,12 @@ class WalkForwardOptimization:
         df_test_result = pd.DataFrame()
 
         for params, test in zip(self.best_params_smoothed, self.test_samples):
-
-            # !! Here, we can call directly the model without run again the model
-            # because hte model is saved used the date so, we keep the best one thanks to get_smoother_result function
-            # when we compute the weights for the best params smoothed
+            # !! Here, we can call directly the model without run again the model because the optimal weights are
+            # computed already and stored into the output dictionary and so in the self.best_params_smoothed list
             self.BT = Backtest(data=test, TradingStrategy=self.TradingStrategy, parameters=params)
             self.BT.run()
             df_test_result = pd.concat((df_test_result, self.BT.data), axis=0)
 
         # Print the backtest for the period following the walk-forward method
-        self.BT = Backtest(data=df_test_result, TradingStrategy=self.TradingStrategy, parameters=params, title=self.title_graph)
-        self.BT.display()
+        self.BT = Backtest(data=df_test_result, TradingStrategy=self.TradingStrategy, parameters=params)
+        self.BT.display(self.title_graph)

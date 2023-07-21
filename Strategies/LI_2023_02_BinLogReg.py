@@ -31,17 +31,19 @@ class BinLogReg:
         self.rsi_period, self.atr_period = parameters["rsi"], parameters["atr"]
         self.look_ahead_period = parameters["look_ahead_period"]
 
-        self.model = None
-        self.saved_model_path = None
+        self.model, self.saved_model_path = None, None
+
+        # Get test parameters
+        self.output_dictionary = parameters.copy()
+        self.output_dictionary["train_mode"] = False
 
         if self.train_mode:
             self.data_train = data
             self.data = data
             self.train_model()
         else:
-            self.model_path = parameters["model_path"]
+            self.model = parameters["model"]
             self.data = data
-            self.get_model()
 
         self.start_date_backtest = self.data.index[0]
         self.get_predictions()
@@ -56,7 +58,6 @@ class BinLogReg:
         self.var_buy_low, self.var_sell_low = None, None
 
     def get_features(self, data_sample):
-
         data_sample = sma_diff(data_sample, "close", self.sma_fast, self.sma_slow)
         data_sample = rsi(data_sample, "close", self.rsi_period)
 
@@ -73,7 +74,7 @@ class BinLogReg:
         self.data_train = self.get_features(self.data_train)
 
         # Create lists with the columns name of the features used and the target
-        self.data_train = binary_signal(self.data_train, self.look_ahead_period, pct_split=full_split)
+        self.data_train = binary_signal(self.data_train, self.look_ahead_period)
         list_y = ["Signal"]
 
         # Split our dataset in a train and a test set
@@ -84,21 +85,11 @@ class BinLogReg:
         ml_model = LogisticRegression()
         ml_model.fit(X_train, y_train)
 
-        # Extract the start and end of t
-        start_training_time = self.data_train.index[0].strftime("%Y-%m-%d")
-        end_training_time = self.data_train.index[-1].strftime("%Y-%m-%d")
-
-        # Create paths to save our model because we can't compute it using the test set to be more realistic
-        self.saved_model_path = f'../models/train/LI-02-2023-BinLogReg-Model-TrainTime-{start_training_time}-to-{end_training_time}.joblib'
-
         # Save models as attributes
         self.model = ml_model
 
-        # Save models in a folder
-        dump(ml_model, self.saved_model_path)
-
-    def get_model(self):
-        self.model = load(self.model_path)
+        # Save the model for the eventual test sets
+        self.output_dictionary["model"] = ml_model
 
     def get_predictions(self):
         self.data = self.get_features(self.data)

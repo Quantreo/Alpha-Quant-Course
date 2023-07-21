@@ -5,6 +5,33 @@ from tqdm import tqdm
 
 
 class Backtest:
+    """
+    A class for backtesting trading strategies.
+
+    This class is used to execute a backtest of a given trading strategy on historical data. It allows
+    to compute various trading metrics such as cumulative returns, drawdown, and other statistics. It
+    can also visualize the backtest results.
+
+    Parameters
+    ----------
+    data : DataFrame
+        The historical data to backtest the trading strategy on. The DataFrame should be indexed by time
+        and contain at least the price data.
+
+    TradingStrategy : object
+        The trading strategy to be backtested. This should be an instance of a class that implements
+        a `get_entry_signal` and `get_exit_signal` methods.
+
+    parameters : dict
+        The parameters of the strategy that should be used during the backtest.
+
+    run_directly : bool, default False
+        If True, the backtest is executed upon initialization. Otherwise, the `run` method should be
+        called explicitly.
+
+    title : str, default None
+        The title of the backtest's plot. If None, a default title will be used.
+    """
 
     def __init__(self, data, TradingStrategy, parameters, run_directly=False, title=None):
         # Set parameters
@@ -31,7 +58,7 @@ class Backtest:
 
     def run(self):
 
-        for current_time in tqdm(self.data.index):
+        for current_time in self.data.index:
 
             # Maybe open a position
             entry_signal, self.entry_trade_time = self.TradingStrategy.get_entry_signal(current_time)
@@ -180,6 +207,6 @@ class Backtest:
 
         return return_over_period, dd_max
 
-    def display(self):
+    def display(self, title=None):
         self.display_metrics()
-        self.display_graphs()
+        self.display_graphs(title)
