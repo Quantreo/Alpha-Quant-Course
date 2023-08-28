@@ -38,9 +38,9 @@ while True:
 
         # Create the signals
         buy, sell = li_2023_02_TreePcaQuantile(symbol, timeframe[0], 30, 80, 14, 5,
-                    "../models/saved/LI_2023_02_LinSvcQuantile_AUDUSD_model.jolib",
-                    "../models/saved/LI_2023_02_LinSvcQuantile_AUDUSD_sc.jolib",
-                    "../models/saved/LI_2023_02_LinSvcQuantile_AUDUSD_pca.jolib")
+                    "../models/saved/LI_2023_02_TreePcaQuantile_AUDUSD_model.jolib",
+                    "../models/saved/LI_2023_02_TreePcaQuantile_AUDUSD_sc.jolib",
+                    "../models/saved/LI_2023_02_TreePcaQuantile_AUDUSD_pca.jolib")
 
         # Import current open positions
         res = resume()
