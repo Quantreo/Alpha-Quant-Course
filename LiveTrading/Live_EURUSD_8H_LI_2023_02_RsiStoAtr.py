@@ -36,7 +36,7 @@ while True:
             print(f"\nERROR - Failed to select '{symbol}' in MetaTrader 5 with error :", mt5.last_error())
 
         # Create the signals
-        buy, sell, pct_tp, pct_Sl = li_2023_02_StoRsiAtr(symbol, timeframe[0], 14, 14)
+        buy, sell, pct_tp, pct_sl = li_2023_02_StoRsiAtr(symbol, timeframe[0], 14, 14)
 
         # Import current open positions
         res = resume()
