@@ -78,7 +78,7 @@ def li_2023_02_RsiSmaAtr(symbol, timeframe, fast_sma_period, slow_sma_period, rs
 
     pct_tp = df["TP_pct"].iloc[-1]
     pct_sl = df["SL_pct"].iloc[-1]
-    return buy, sell, pct_tp, pct_sl
+    return buy, sell, pct_tp, np.abs(pct_sl)
 
 
 def li_2023_02_Ichimoku_1(symbol, timeframe, ichi_window_1, ichi_window_2):
@@ -121,7 +121,7 @@ def li_2023_02_StoRsiAtr(symbol, timeframe, sto_period, atr_period):
 
     pct_tp = df["TP_pct"].iloc[-1]
     pct_sl = df["SL_pct"].iloc[-1]
-    return buy, sell, pct_tp, pct_sl
+    return buy, sell, pct_tp, np.abs(pct_sl)
 
 
 def li_2023_02_LinSvcQuantile(symbol, timeframe, sma_fast_period, slow_sma_period, rsi_period, atr_period, model_path, sc_path):
