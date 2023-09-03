@@ -134,7 +134,7 @@ class Backtest:
             minutes = seconds // 60
             minutes_left = int(minutes % 60)
             hours = minutes // 60
-            hours_left = int(hours % 60)
+            hours_left = int(hours % 24)
             days = int(hours / 24)
         except:
             minutes_left = 0
