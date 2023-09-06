@@ -69,13 +69,7 @@ class ParamsOptimization:
         # Extract the dataframe line with the best parameters
         self.best_params_sample_df = df_find_params.sort_values(by="criterion", ascending=False).iloc[0:1, :]
 
-        # !! We put the last index value as index
-        # because WITHOUT that when you replace the criterion value later you will replace all value with the same index
-        self.best_params_sample_df.index = self.data.index[-2:-1]
-
         # Create a dictionary with the best params on the train set in order to test them on the test set later
         self.best_params_sample = dict(df_find_params.sort_values(by="criterion", ascending=False).iloc[0, :-1])
         self.best_params_sample.update(self.fixed_parameters)
 
-        # !! IF YOU USE A ML MODEL, YOU NEED TO TRAIN IT ONE TIME WITH THE BEST PARAMS TO KEEP THE BEST MODEL
-        self.get_criterion(self.data, self.best_params_sample)
