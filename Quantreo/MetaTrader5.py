@@ -31,7 +31,7 @@ def get_verification_time(timeframe:int):
     You need to put the timeframe in minute.
     EX: 8H = 8*60 = 640| 2H = 2*60 = 120
     """
-    start_time = datetime(year=2021,month=1,day=1,hour=0, minute=0)
+    start_time = datetime(year=2021,month=1,day=1,hour=0, minute=0) - timedelta(seconds=2)
     end_time = datetime(year=2021,month=1,day=1,hour=23, minute=59, second=59)
 
     time_list = [start_time.strftime("%H:%M:%S")]
@@ -39,6 +39,7 @@ def get_verification_time(timeframe:int):
     while current_time <= end_time:
         current_time += timedelta(minutes=timeframe)
         time_list.append(current_time.strftime("%H:%M:%S"))
+    del time_list[0]
     del time_list[-1]
 
     return time_list
