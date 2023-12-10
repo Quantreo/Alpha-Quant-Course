@@ -37,7 +37,7 @@ def find_timestamp_extremum(df, df_lower_timeframe):
 
     # Verify the number of row without both TP and SL on same time
     percentage_good_row = len(df.dropna()) / len(df) * 100
-    percentage_garbage_row = 1 - percentage_good_row
+    percentage_garbage_row = 100 - percentage_good_row
 
     # if percentage_garbage_row<95:
     print(f"WARNINGS: Garbage row: {'%.2f' % percentage_garbage_row} %")
