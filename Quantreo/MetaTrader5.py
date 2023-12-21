@@ -230,7 +230,7 @@ def run(symbol, buy, sell, lot, pct_tp=0.02, pct_sl=0.01, comment="", magic=2340
         identifier_list = orders.loc[orders["symbol"] == symbol]
         
         position = position_list.loc[position_list["magic"]==magic].values[0][1]
-        identifier = identifier_list.loc[identifier_list["magic"] == magic].values[0][1]
+        identifier = identifier_list.loc[identifier_list["magic"] == magic].values[0][0]
         
     except:
         position = None
