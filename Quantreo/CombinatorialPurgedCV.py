@@ -211,8 +211,25 @@ class CombinatorialPurgedCV:
             self.df_lists[j][1] = test_output_list[j]
 
     def get_returns(self, train=True):
+        # We extract the data with the features to concatenate them later 
+        # Necessary to avoid creating the features and the ML weights on data with huge gap sometimes
+        train_sample_list = []
+        
+        for train_sample in self.train_df_list:
+            # Initialize the instance
+            Strategy = self.TradingStrategy(train_sample, self.params_item)
+            
+            # Extract the attributes (the variables containing self. before)
+            attributes = [attr for attr in dir(Strategy)]
+            
+            # Sometimes we need self.data_train when it is a ML model and when it is not we need self.data
+            if "data_train" in attributes:
+                train_sample_list.append(Strategy.data_train)
+            else:
+                train_sample_list.append(Strategy.data)
+        
         # Concatenate each train sets to train the weights (ONLY) on the more data possible
-        self.train_sample = pd.concat(self.train_df_list, axis=0)
+        self.train_sample = pd.concat(train_sample_list, axis=0)
 
         # Prepare some weight (if it is necessary)
         Strategy = self.TradingStrategy(self.train_sample, self.params_item)
