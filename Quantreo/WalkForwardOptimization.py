@@ -185,16 +185,16 @@ class WalkForwardOptimization:
         # Create a dictionary with the best params SMOOTHED by exponential mean or by the mode
         test_params = dict(self.smooth_result.iloc[-1,:-1])
 
+        # Replace the ranging parameters by the smoothed parameters
+        for key in test_params.keys():
+            self.best_params_sample[key] = test_params[key]
+
         # New way to keep the ML algo weights in memory
         # We initialize the strategy class to train the weights if it is necessary
         Strategy = self.TradingStrategy(self.train_sample, self.best_params_sample)
 
         # Extract the output dictionary parameters
         output_params = Strategy.output_dictionary
-
-        # Replace the ranging parameters by the smoothed parameters
-        for key in test_params.keys():
-            output_params[key] = test_params[key]
 
         return output_params
 
