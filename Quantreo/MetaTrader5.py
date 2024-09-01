@@ -47,7 +47,7 @@ def get_verification_time(timeframe:int):
 
 def get_rates(symbol, number_of_data=10000, timeframe=mt5.TIMEFRAME_D1):
     # Compute now date
-    from_date = datetime.now()
+    from_date = datetime.now() + timedelta(hours=26) # It is the maximal timezone shift possible
 
     # Extract n rates before now
     rates = mt5.copy_rates_from(symbol, timeframe, from_date, number_of_data)
