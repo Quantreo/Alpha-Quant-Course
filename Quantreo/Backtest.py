@@ -59,14 +59,13 @@ class Backtest:
     def run(self):
 
         for current_time in self.data.index:
+            # Maybe close a position
+            position_return, self.exit_trade_time = self.TradingStrategy.get_exit_signal(current_time)
 
             # Maybe open a position
             entry_signal, self.entry_trade_time = self.TradingStrategy.get_entry_signal(current_time)
             self.data.loc[current_time, "buy_count"] = 1 if entry_signal == 1 else 0
             self.data.loc[current_time, "sell_count"] = 1 if entry_signal == -1 else 0
-
-            # Maybe close a position
-            position_return, self.exit_trade_time = self.TradingStrategy.get_exit_signal(current_time)
 
             # Store position return and duration when we close a trade
             if position_return != 0:
