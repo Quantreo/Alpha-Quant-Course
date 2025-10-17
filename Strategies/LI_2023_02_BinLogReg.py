@@ -37,15 +37,25 @@ class BinLogReg:
         self.output_dictionary = parameters.copy()
         self.output_dictionary["train_mode"] = False
 
+        # NEW 🟢 Handle optional feature control flag
+        self.features_already_computed = parameters.get("features_already_computed", False)
+
         if self.train_mode:
             self.data_train = data
             self.data = data
-            self.train_model()
+
+            # NEW 🟢 Handle optional feature control
+            if not self.features_already_computed:
+                self.train_model()
+            else:
+                # Just reuse features and fit the model directly
+                self.fit_model()
         else:
             self.model = parameters["model"]
             self.data = data
 
         self.start_date_backtest = self.data.index[0]
+
         self.get_predictions()
 
         # Get Entry parameters
@@ -67,18 +77,20 @@ class BinLogReg:
         return data_sample
 
     def train_model(self):
-        # Create the features and the target
-        full_split = 1.00
-
         # features to reply in the get_features function
         self.data_train = self.get_features(self.data_train)
 
         # Create lists with the columns name of the features used and the target
         self.data_train = binary_signal(self.data_train, self.look_ahead_period)
+
+        self.fit_model()
+
+    # NEW 🟢 Put the end of the train_model function into the fit_model one
+    def fit_model(self):
         list_y = ["Signal"]
 
         # Split our dataset in a train and a test set
-        split = int(len(self.data_train) * full_split)
+        split = len(self.data_train)
         X_train, X_test, y_train, y_test = data_split(self.data_train, split, self.list_X, list_y)
 
         # Create the model

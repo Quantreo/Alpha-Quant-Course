@@ -210,61 +210,134 @@ class CombinatorialPurgedCV:
             self.df_lists[j][0] = train_output_list[j]
             self.df_lists[j][1] = test_output_list[j]
 
-    def get_returns(self, train=True):
-        # We extract the data with the features to concatenate them later
-        # Necessary to avoid creating the features and the ML weights on data with huge gap sometimes
-        train_sample_list = []
+    def get_returns(self, train: bool = True):
+        """
+        Compute the objective/criterion for either the TRAIN or TEST side of a CPCV split.
 
-        for train_sample in self.train_df_list:
-            # Initialize the instance
-            Strategy = self.TradingStrategy(train_sample, self.params_item)
+        High-level goals (why this looks the way it does):
+        --------------------------------------------------
+        1) Avoid feature leakage across temporal gaps:
+           - We compute features *per disjoint training block* first (block-by-block),
+             then we concatenate those already-featured blocks.
+           - This prevents rolling/statistical features from "bridging" across the
+             purged/embargoed gaps (classic CPCV pitfall).
 
-            # Extract the attributes (the variables containing self. before)
-            attributes = [attr for attr in dir(Strategy)]
+        2) Train on the largest, feature-consistent dataset:
+           - After we have all training blocks with features, we concatenate them
+             and fit the ML model ONCE on that concatenation (no feature recomputation).
 
-            # Sometimes we need self.data_train when it is a ML model and when it is not we need self.data
-            if "data_train" in attributes:
-                train_sample_list.append(Strategy.data_train)
+        3) Evaluate with a frozen model in OOS (train=False) or IS (train=True):
+           - We run Backtest on each block (train or test list) using the *same*
+             fitted model/parameters (frozen), then concatenate the backtest outputs
+             to compute a single criterion (e.g., Calmar = return / |max drawdown|).
+
+        Expected environment/assumptions:
+        ---------------------------------
+        - self.train_df_list and self.test_df_list are prepared by previous steps
+          (purge/embargo already applied, blocks possibly non-contiguous).
+        - self.TradingStrategy(data, params) supports:
+            params["train_mode"]: bool
+            params["features_already_computed"]: bool
+            params["model"]: fitted model (for prediction when train_mode=False)
+          and exposes:
+            .data_train or .data  (dataframe with features after init in train_mode=True)
+            .output_dictionary     (dict with frozen params including fitted model)
+        - Backtest(data, TradingStrategy, parameters) supports .run() and .get_ret_dd().
+
+        IMPORTANT flags we set:
+        -----------------------
+        - During per-block feature creation:
+            train_mode=True,  features_already_computed=False  (compute features in each block)
+        - During global fitting on concatenated features:
+            train_mode=True,  features_already_computed=True   (do NOT recompute features)
+        - During evaluation on blocks:
+            train_mode=False, features_already_computed=True   (use frozen fitted model)
+
+        Returns:
+        --------
+        - Sets:
+            self.criterion  (float): The chosen objective (here: Calmar ratio).
+            self.output_params (dict): Frozen parameters incl. fitted model for reuse.
+
+        Side effects:
+        -------------
+        - self.BT is updated to the last Backtest instance used (final criterion calc).
+        - self.train_sample is set to the concatenation of all *featured* train blocks.
+
+        Notes:
+        -----------
+        - Code should be working fine
+        - Docstring generated with Chat GPT
+        """
+
+        # ---------- 1) Build features per disjoint training block (no leakage) ----------
+        featured_train_blocks = []
+
+        # Work with copies to avoid mutating self.params_item across iterations
+        params_block = self.params_item.copy()
+        params_block["train_mode"] = True
+        params_block["features_already_computed"] = False
+        params_block["model"] = None  # ensure a fresh fit per block
+
+        # We always build features from the training blocks (even if `train=False`,
+        # we still need a model trained on the train side to evaluate on the test side).
+        for train_block in self.train_df_list:
+            # Strategy will compute features *inside* init because features_already_computed=False
+            strat_block = self.TradingStrategy(train_block, params_block)
+
+            # ML-based strategies often expose .data_train; rule-based may just expose .data
+            if hasattr(strat_block, "data_train"):
+                featured_train_blocks.append(strat_block.data_train)
             else:
-                train_sample_list.append(Strategy.data)
+                featured_train_blocks.append(strat_block.data)
 
-        # Concatenate each train sets to train the weights (ONLY) on the more data possible
-        self.train_sample = pd.concat(train_sample_list, axis=0)
+        # ---------- 2) Concatenate all *featured* training blocks ----------
+        # After this point, we have one big dataset with features, but still no leakage
+        # because each block was featured independently before concatenation.
+        self.train_sample = pd.concat(featured_train_blocks, axis=0)
 
-        # Prepare some weight (if it is necessary)
-        Strategy = self.TradingStrategy(self.train_sample, self.params_item)
+        # ---------- 3) Fit a single model on the concatenated features ----------
+        params_fit = self.params_item.copy()
+        params_fit["train_mode"] = True
+        params_fit["features_already_computed"] = True  # crucial: do NOT recompute features now
+        params_fit["model"] = None
 
-        # Extract weights that will allow us to run our algo (especially for strategies that need a training like ML)
-        self.output_params = Strategy.output_dictionary
+        # In this template, Strategy __init__ will train the model when train_mode=True.
+        # Because features_already_computed=True, it should *skip* feature creation and go straight to fit.
+        strat_full = self.TradingStrategy(self.train_sample, params_fit)
 
-        # Create an empty list to store the returns (and concat them)
-        list_return = []
+        # Freeze the trained model & all params for evaluation
+        # (copy to avoid accidental in-place edits later)
+        self.output_params = strat_full.output_dictionary.copy()
 
-        # Chose the right set for depending on the mode Train or Test
-        if train:
-            df_list = self.train_df_list
-        else:
-            df_list = self.test_df_list
+        # Be explicit: evaluation should never retrain or recompute features
+        self.output_params["train_mode"] = False
+        self.output_params["features_already_computed"] = True
 
-        for tsample in df_list:
-            # Compute the returns
-            self.BT = Backtest(data=tsample, TradingStrategy=self.TradingStrategy, parameters=self.output_params)
+        # ---------- 4) Run backtests on the selected side (train or test) with the frozen model ----------
+        eval_blocks = self.train_df_list if train else self.test_df_list
+
+        backtest_outputs = []
+        for block in eval_blocks:
+            # Use a fresh copy of params for each Backtest to avoid shared-mutation traps
+            bt_params = self.output_params.copy()
+            self.BT = Backtest(data=block, TradingStrategy=self.TradingStrategy, parameters=bt_params)
             self.BT.run()
+            backtest_outputs.append(self.BT.data)
 
-            # Add the returns into the list
-            list_return.append(self.BT.data)
+        # ---------- 5) Concatenate all backtest outputs and compute the criterion ----------
+        # Concatenation here is safe because we're concatenating *performance outputs*,
+        # not recomputing time-dependent features across gaps.
+        full_bt = pd.concat(backtest_outputs, axis=0)
 
-        # Concat the list to have the whole backtest (we need to do that to avoid aberrant values in the gap)
-        sets = pd.concat(list_return, axis=0)
+        # Compute return & max drawdown on the concatenated performance series
+        # Use the *frozen* parameters (NOT the raw params for the combination)
+        bt_params_final = self.output_params.copy()
+        self.BT = Backtest(data=full_bt, TradingStrategy=self.TradingStrategy, parameters=bt_params_final)
 
-        # We initialize the Backtest class again (Without running the backtest) just to compute the criterion
-        self.BT = Backtest(data=sets, TradingStrategy=self.TradingStrategy, parameters=self.params_item)
-
-        # Calculation and storage of the criterion (Return over period over the maximum drawdown)
         ret, dd = self.BT.get_ret_dd()
-
-        # We use the Calmar ratio as criterion
-        self.criterion = ret / np.abs(dd)
+        # Calmar ratio (guard against division by zero if you want)
+        self.criterion = ret / np.abs(dd) if dd != 0 else np.nan
 
     def get_best_params_set(self):
         storage_values_params = []
